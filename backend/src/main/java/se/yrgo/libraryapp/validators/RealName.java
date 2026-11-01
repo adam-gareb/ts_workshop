@@ -12,26 +12,41 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * This validator checks that the real names match our high standard for proper names. I.e. no bad
+ * This validator checks that the real names match our high standard for proper
+ * names. I.e. no bad
  * words.
  */
 public final class RealName {
     private static Logger logger = LoggerFactory.getLogger(RealName.class);
     private static final Set<String> invalidWords = new HashSet<>();
 
+    // static {
+    // try (InputStream is =
+    // RealName.class.getClassLoader().getResourceAsStream("bad_words.txt");
+    // BufferedReader reader =
+    // new BufferedReader(new InputStreamReader(is, StandardCharsets.UTF_8))) {
+    // while (reader.readLine() != null) {
+    // invalidWords.addAll(reader.lines().collect(Collectors.toSet()));
+    // }
+    // } catch (IOException ex) {
+    // logger.error("Unable to initialize list of bad words", ex);
+    // }
+    // }
+
     static {
         try (InputStream is = RealName.class.getClassLoader().getResourceAsStream("bad_words.txt");
-                BufferedReader reader =
-                        new BufferedReader(new InputStreamReader(is, StandardCharsets.UTF_8))) {
-            while (reader.readLine() != null) {
-                invalidWords.addAll(reader.lines().collect(Collectors.toSet()));
-            }
+                BufferedReader reader = new BufferedReader(new InputStreamReader(is, StandardCharsets.UTF_8))) {
+            invalidWords.addAll(reader.lines()
+                    .map(String::trim)
+                    .filter(line -> !line.isEmpty())
+                    .collect(Collectors.toSet()));
         } catch (IOException ex) {
             logger.error("Unable to initialize list of bad words", ex);
         }
     }
 
-    private RealName() {}
+    private RealName() {
+    }
 
     /**
      * Validates if the given name is a valid and proper name.
@@ -42,12 +57,22 @@ public final class RealName {
      */
     public static boolean validate(String name) {
         String cleanName = Utils.cleanAndUnLeet(name);
-        String[] words = cleanName.split("\\W+");
-        for (int i = 1; i < words.length; i++) {
-            if (invalidWords.contains(words[i])) {
+        for (String word : cleanName.split("\\s+")) {
+            if (invalidWords.contains(word)) {
                 return false;
             }
         }
         return true;
     }
+
+    // public static boolean validate(String name) {
+    // String cleanName = Utils.cleanAndUnLeet(name);
+    // String[] words = cleanName.split("\\W+");
+    // for (int i = 1; i < words.length; i++) {
+    // if (invalidWords.contains(words[i])) {
+    // return false;
+    // }
+    // }
+    // return true;
+    // }
 }
