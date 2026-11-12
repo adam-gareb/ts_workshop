@@ -10,7 +10,7 @@ import javax.inject.Inject;
 import javax.sql.DataSource;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.security.crypto.argon2.Argon2PasswordEncoder;
+// import org.springframework.security.crypto.argon2.Argon2PasswordEncoder;
 
 import se.yrgo.libraryapp.entities.*;
 
@@ -58,16 +58,10 @@ public class UserDao {
         return Optional.empty();
     }
 
-    public boolean register(String name, String realname, String password) {
-        Argon2PasswordEncoder encoder = new Argon2PasswordEncoder();
-        String passwordHash = encoder.encode(password);
-
-        // handle names like Ian O'Toole
-        realname = realname.replace("'", "\\'");
-
+    // Register tar nu en färdig hash
+    public boolean register(String name, String realname, String passwordHash) {
         try (Connection conn = ds.getConnection()) {
             conn.setAutoCommit(false);
-
             return insertUserAndRole(name, realname, passwordHash, conn);
         } catch (SQLException ex) {
             logger.error("Unable to register user " + name, ex);
@@ -75,11 +69,24 @@ public class UserDao {
         }
     }
 
-    public boolean isNameAvailable(String name) {
-        if (name == null || name.trim().length() < 3) {
-            return false;
-        }
+    // public boolean register(String name, String realname, String password) {
+    // Argon2PasswordEncoder encoder = new Argon2PasswordEncoder();
+    // String passwordHash = encoder.encode(password);
 
+    // // handle names like Ian O'Toole
+    // realname = realname.replace("'", "\\'");
+
+    // try (Connection conn = ds.getConnection()) {
+    // conn.setAutoCommit(false);
+
+    // return insertUserAndRole(name, realname, passwordHash, conn);
+    // } catch (SQLException ex) {
+    // logger.error("Unable to register user " + name, ex);
+    // return false;
+    // }
+    // }
+
+    public boolean isNameAvailable(String name) {
         String query = "SELECT id FROM user WHERE user = ?";
         try (Connection conn = ds.getConnection();
                 PreparedStatement ps = conn.prepareStatement(query)) {
@@ -93,20 +100,40 @@ public class UserDao {
         }
     }
 
+    // public boolean isNameAvailable(String name) {
+    // if (name == null || name.trim().length() < 3) {
+    // return false;
+    // }
+
+    // String query = "SELECT id FROM user WHERE user = ?";
+    // try (Connection conn = ds.getConnection();
+    // PreparedStatement ps = conn.prepareStatement(query)) {
+    // ps.setString(1, name);
+    // try (ResultSet rs = ps.executeQuery()) {
+    // return !rs.next();
+    // }
+    // } catch (SQLException ex) {
+    // logger.error("Unable to lookup user name " + name, ex);
+    // return false;
+    // }
+    // }
+
+    // PreparedStatememnt hanterar nu namn såsom O'Toole
     private boolean insertUserAndRole(String name, String realname, String passwordHash,
             Connection conn) throws SQLException {
-        String insertUser = "INSERT INTO user (user, realname, password_hash) VALUES ('" + name
-                + "', '" + realname + "', '" + passwordHash + "')";
+        String insertUser = "INSERT INTO user (user, realname, password_hash) VALUES (?, ?, ?)";
 
-        try (Statement stmt = conn.createStatement()) {
-            stmt.executeUpdate(insertUser, Statement.RETURN_GENERATED_KEYS);
-            UserId userId = getGeneratedUserId(stmt);
+        try (PreparedStatement ps = conn.prepareStatement(insertUser, Statement.RETURN_GENERATED_KEYS)) {
+            ps.setString(1, name);
+            ps.setString(2, realname);
+            ps.setString(3, passwordHash);
+            ps.executeUpdate();
+            UserId userId = getGeneratedUserId(ps);
 
             if (userId.getId() > 0 && addToUserRole(conn, userId)) {
                 conn.commit();
                 return true;
-            }
-            else {
+            } else {
                 conn.rollback();
                 return false;
             }
@@ -119,6 +146,33 @@ public class UserDao {
         }
     }
 
+    // private boolean insertUserAndRole(String name, String realname, String
+    // passwordHash,
+    // Connection conn) throws SQLException {
+    // String insertUser = "INSERT INTO user (user, realname, password_hash) VALUES
+    // ('" + name
+    // + "', '" + realname + "', '" + passwordHash + "')";
+
+    // try (Statement stmt = conn.createStatement()) {
+    // stmt.executeUpdate(insertUser, Statement.RETURN_GENERATED_KEYS);
+    // UserId userId = getGeneratedUserId(stmt);
+
+    // if (userId.getId() > 0 && addToUserRole(conn, userId)) {
+    // conn.commit();
+    // return true;
+    // } else {
+    // conn.rollback();
+    // return false;
+    // }
+    // } catch (SQLException ex) {
+    // conn.rollback();
+    // logger.error("Unable to register user " + name, ex);
+    // return false;
+    // } finally {
+    // conn.setAutoCommit(true);
+    // }
+    // }
+
     private UserId getGeneratedUserId(Statement stmt) throws SQLException {
         try (ResultSet rs = stmt.getGeneratedKeys()) {
             rs.next();
@@ -127,10 +181,20 @@ public class UserDao {
     }
 
     private boolean addToUserRole(Connection conn, UserId user) throws SQLException {
-        String insertRole = "INSERT INTO user_role (user_id, role_id) VALUES (" + user + ", 2)";
-
-        try (Statement stmt = conn.createStatement()) {
-            return stmt.executeUpdate(insertRole) == 1;
+        String insertRole = "INSERT INTO user_role (user_id, role_id) VALUES (?, 2)";
+        try (PreparedStatement ps = conn.prepareStatement(insertRole)) {
+            ps.setInt(1, user.getId());
+            return ps.executeUpdate() == 1;
         }
     }
+
+    // private boolean addToUserRole(Connection conn, UserId user) throws
+    // SQLException {
+    // String insertRole = "INSERT INTO user_role (user_id, role_id) VALUES (" +
+    // user + ", 2)";
+
+    // try (Statement stmt = conn.createStatement()) {
+    // return stmt.executeUpdate(insertRole) == 1;
+    // }
+    // }
 }
