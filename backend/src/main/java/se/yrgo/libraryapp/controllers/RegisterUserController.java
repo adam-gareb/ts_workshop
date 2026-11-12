@@ -7,22 +7,24 @@ import io.jooby.annotations.Path;
 import io.jooby.annotations.QueryParam;
 import se.yrgo.libraryapp.dao.UserDao;
 import se.yrgo.libraryapp.entities.forms.RegisterUserData;
+import se.yrgo.libraryapp.services.UserService;
 import se.yrgo.libraryapp.validators.RealName;
 import se.yrgo.libraryapp.validators.Username;
 
+// Ändrat från UserDao till UserService på alla
 @Path("/register")
 public class RegisterUserController {
-    private UserDao userDao;
+    private UserService userService;
 
     @Inject
-    RegisterUserController(UserDao userDao) {
-        this.userDao = userDao;
+    RegisterUserController(UserService userService) {
+        this.userService = userService;
     }
 
     @POST
     public boolean register(RegisterUserData userData) {
         if (Username.validate(userData.getName()) && RealName.validate(userData.getRealName())) {
-            return userDao.register(userData.getName(), userData.getRealName(), userData.getPassword());
+            return userService.register(userData.getName(), userData.getRealName(), userData.getPassword());
         }
         
         return false;
@@ -31,6 +33,6 @@ public class RegisterUserController {
     @GET
     @Path("/available")
     public boolean isNameAvailable(@QueryParam String name) {
-        return userDao.isNameAvailable(name);
+        return userService.isNameAvailable(name);
     }
 }

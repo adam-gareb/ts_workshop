@@ -31,6 +31,7 @@ public class App extends Jooby {
     install(new HikariModule()); // database connections
     install(new FlywayModule()); // schema migration
     install(new JacksonModule()); // json (de)serialization
+    install(new GuiceModule(new AppModule()));
 
     decorator(new AccessLogHandler());
     decorator(new CorsHandler());
